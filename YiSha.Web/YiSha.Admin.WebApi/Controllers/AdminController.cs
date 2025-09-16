@@ -80,6 +80,14 @@ namespace YiSha.Admin.WebApi.Controllers
 
         }
 
+
+        [HttpGet]
+
+        public dynamic test()
+        {
+            return Ok();
+        }
+
         [HttpGet]
 
 
