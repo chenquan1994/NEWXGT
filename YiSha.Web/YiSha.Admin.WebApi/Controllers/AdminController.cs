@@ -194,6 +194,11 @@ namespace YiSha.Admin.WebApi.Controllers
 
         }
 
+        public dynamic test()
+        {
+            return Ok();
+        }
+
 
         //提现表
         [HttpGet]
