@@ -194,10 +194,110 @@ namespace YiSha.Admin.WebApi.Controllers
 
         }
 
-        public dynamic test()
+        [HttpGet]
+        public dynamic dengji()
         {
+            var list = _context.cq_user.Where(t=>t.jibie==0).ToList();
+
+            foreach (var item in list)
+            {
+
+                var user = _context.cq_user.Where(t => t.zt_id == item.Id).ToList();
+
+                List<double> values = new List<double>();
+
+                for (int i = 0; i < user.Count; i++)
+                {
+                    var jine = from a in _context.cq_order
+                               join b in _context.cq_user on a.user_id equals b.Id
+
+                               where b.f_id.Contains(user[i].Id.ToString())
+
+                               select new
+                               {
+                                   a.yuanjia
+                               };
+
+                    var licai = _context.cq_licai_order.Where(t => t.User_id == user[i].Id).Sum(t => t.money);
+
+                    values.Add((double)jine.Sum(t => t.yuanjia) + double.Parse(licai.ToString()));
+                }
+
+
+                var sortedAndRemoved = values.OrderByDescending(n => n).Skip(1).ToList();
+
+
+                double yeji = 0;
+
+
+                foreach (var item2 in sortedAndRemoved)
+                {
+                    yeji += item2;
+
+                }
+
+                int dengji = 0;
+
+                if (yeji >= 3000 && yeji < 10000)
+                {
+                    dengji = 1;
+                }
+
+                if (yeji >= 10000 && yeji < 30000)
+                {
+                    dengji = 2;
+                }
+
+                if (yeji >= 30000 && yeji < 80000)
+                {
+                    dengji = 3;
+                }
+
+                if (yeji >= 80000 && yeji < 200000)
+                {
+                    dengji = 4;
+                }
+
+                if (yeji >= 200000 && yeji < 600000)
+                {
+                    dengji = 5;
+                }
+
+                if (yeji >= 600000 && yeji < 1000000)
+                {
+                    dengji = 6;
+                }
+
+                if (yeji >= 1000000 && yeji <= 1000000000)
+                {
+                    dengji = 7;
+                }
+
+
+                int dj = dengji;
+
+                if (item.jibie < dj)
+                {
+                    item.jibie = dj;
+
+                    _context.SaveChanges();
+
+
+                }
+
+
+
+
+
+
+            }
+
+
             return Ok();
+
+
         }
+
 
 
         //提现表

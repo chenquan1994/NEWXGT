@@ -314,6 +314,7 @@ namespace YiSha.Admin.WebApi.Controllers
 
                        select new
                        {
+                           xiaoquyeji= dengji(long.Parse(user_id)),
                            yue = zongzijin,
                            tuandui = tuandui.Count,
                            xzzhitui = xzzhitui.Count,
@@ -339,6 +340,64 @@ namespace YiSha.Admin.WebApi.Controllers
             return new { msg = "获取成功", list = list, state = "success", tuandui = td.Count };
 
         }
+
+
+        public decimal dengji(long user_id)
+        {
+            var list = _context.cq_user.Where(t => t.Id==user_id).ToList();
+
+            double yeji = 0;
+            foreach (var item in list)
+            {
+
+                var user = _context.cq_user.Where(t => t.zt_id == item.Id).ToList();
+
+                List<double> values = new List<double>();
+
+                for (int i = 0; i < user.Count; i++)
+                {
+                    var jine = from a in _context.cq_order
+                               join b in _context.cq_user on a.user_id equals b.Id
+
+                               where b.f_id.Contains(user[i].Id.ToString())
+
+                               select new
+                               {
+                                   a.yuanjia
+                               };
+
+                    var licai = _context.cq_licai_order.Where(t => t.User_id == user[i].Id).Sum(t => t.money);
+
+                    values.Add((double)jine.Sum(t => t.yuanjia) + double.Parse(licai.ToString()));
+                }
+
+
+                var sortedAndRemoved = values.OrderByDescending(n => n).Skip(1).ToList();
+
+
+
+
+                foreach (var item2 in sortedAndRemoved)
+                {
+                    yeji += item2;
+
+                }
+
+              
+
+
+
+
+
+
+            }
+
+
+            return (decimal)yeji;
+
+
+        }
+
 
 
 

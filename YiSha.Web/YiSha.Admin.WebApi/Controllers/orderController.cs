@@ -354,9 +354,18 @@ namespace YiSha.Admin.WebApi.Controllers
 
                 int dj = dengji;
 
-                item.jibie = dj;
+               
 
-                _context.SaveChanges();
+
+
+                if (item.jibie < dj)
+                {
+                    item.jibie = dj;
+
+                    _context.SaveChanges();
+
+
+                }
 
 
 
