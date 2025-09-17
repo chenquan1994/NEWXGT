@@ -16,6 +16,7 @@ namespace YiSha.Admin.WebApi.Controllers
     public class XgtController : ControllerBase
     {
       
+      
         private readonly IConfiguration _configuration;
         private readonly MiaContext _context;
 

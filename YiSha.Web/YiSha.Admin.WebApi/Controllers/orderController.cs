@@ -469,7 +469,7 @@ namespace YiSha.Admin.WebApi.Controllers
 
             if (userlist.zy_state == 1)
             {
-                return new { msg = "质押失败,系统入金,请联系管理员开通", state = "error" };
+                return new { msg = "质押失败,请联系管理员开通", state = "error" };
             }
 
             if (order.day == 7)

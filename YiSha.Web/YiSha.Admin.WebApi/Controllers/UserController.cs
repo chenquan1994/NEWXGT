@@ -454,7 +454,7 @@ namespace YiSha.Admin.WebApi.Controllers
 
             if (ziji_user.hz_state == 1)
             {
-                return new { msg = "转账失败,系统入金,请联系管理员开通", state = "error" };
+                return new { msg = "转账失败,请联系管理员开通", state = "error" };
 
             }
 
@@ -620,7 +620,7 @@ namespace YiSha.Admin.WebApi.Controllers
 
             if (userlist.tx_state == 1)
             {
-                return new { msg = "提现失败,系统入金,请联系管理员开通", state = "error" };
+                return new { msg = "提现失败,请联系管理员开通", state = "error" };
             }
 
 
