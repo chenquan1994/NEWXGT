@@ -297,16 +297,41 @@ namespace YiSha.Admin.WebApi.Controllers
 
             //团队业绩
 
-            var tuanduiyeji = from a in _context.cq_user
-                              join b in _context.cq_order on a.Id equals b.user_id
-                              where a.f_id.Contains(user_id) && b.type == 2 && b.state == 1
-                              select new
-                              {
-                                  b.yuanjia,
+            var user = _context.cq_user.Where(t => t.zt_id == long.Parse(user_id)).ToList();
 
-                              };
+            List<double> values = new List<double>();
 
-            var tuanduiyejimoney = tuanduiyeji.Sum(t => t.yuanjia);
+
+            for (int i = 0; i < user.Count; i++)
+            {
+                var jine = from a in _context.cq_order
+                           join b in _context.cq_user on a.user_id equals b.Id
+                           where b.f_id.Contains(user[i].Id.ToString()) && a.type == 2 && a.state == 1
+
+                           select new
+                           {
+                               a.yuanjia
+                           };
+
+                var licai = _context.cq_licai_order.Where(t => t.User_id == user[i].Id).Sum(t => t.money);
+
+                values.Add((double)jine.Sum(t => t.yuanjia) + double.Parse(licai.ToString()));
+            }
+
+
+ 
+
+            double yeji = 0;
+
+
+            foreach (var item2 in values)
+            {
+                yeji += item2;
+
+            }
+            var tuanduiyejimoney = yeji;
+
+
             var list = from a in _context.cq_user
                        join b in _context.cq_money on a.Id equals b.User_id
 

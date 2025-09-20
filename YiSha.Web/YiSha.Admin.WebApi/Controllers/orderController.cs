@@ -289,8 +289,7 @@ namespace YiSha.Admin.WebApi.Controllers
                     var jine = from a in _context.cq_order
                                join b in _context.cq_user on a.user_id equals b.Id
 
-                               where b.f_id.Contains(user[i].Id.ToString())
-
+                               where b.f_id.Contains(user[i].Id.ToString()) && a.type == 2 && a.state == 1
                                select new
                                {
                                    a.yuanjia

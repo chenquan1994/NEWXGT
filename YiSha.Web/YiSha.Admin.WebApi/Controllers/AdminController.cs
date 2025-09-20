@@ -130,12 +130,8 @@ namespace YiSha.Admin.WebApi.Controllers
             order.sf_state = 0;
             order.datetime = System.DateTime.Now;
             order.sd_rj = 1;
-
-    
-
-
-
             double meishifangmoney = 0;
+
             if (order.yuanjia >= 100 && order.yuanjia <= 499)
             {
                 meishifangmoney = (double)(order.yuanjia * 2);
@@ -163,9 +159,8 @@ namespace YiSha.Admin.WebApi.Controllers
             {
                 meishifangmoney = (double)(double.Parse(order.yuanjia.ToString()) * 4);
             }
-
-
-
+            
+            
             LicaiOrderEntity licai = new LicaiOrderEntity();
             licai.Id = IdGeneratorHelper.Instance.GetId();
             licai.state = 1;
@@ -175,31 +170,16 @@ namespace YiSha.Admin.WebApi.Controllers
             licai.User_id = user.Id;
             licai.sf_datetime = DateTime.Now;
             licai.money = order.yuanjia;
-
-
-
-
-        
             _context.Add(licai);
             _context.SaveChanges();
             string ddid = order.Id.ToString();
             return new { msg = "订单创建成功", order = order.Id.ToString(), dazhemoney = shiji, state = "success" };
-
-
-
-
-
-
-
-
-
-
         }
 
         [HttpGet]
-        public dynamic dengji()
+        public dynamic dengji(string user_id)
         {
-            var list = _context.cq_user.Where(t=>t.jibie==0).ToList();
+            var list = _context.cq_user.Where(t=>t.Id==long.Parse(user_id)).ToList();
 
             foreach (var item in list)
             {
@@ -212,8 +192,7 @@ namespace YiSha.Admin.WebApi.Controllers
                 {
                     var jine = from a in _context.cq_order
                                join b in _context.cq_user on a.user_id equals b.Id
-
-                               where b.f_id.Contains(user[i].Id.ToString())
+                               where b.f_id.Contains(user[i].Id.ToString()) && a.type == 2 && a.state == 1
 
                                select new
                                {
