@@ -209,6 +209,7 @@ namespace YiSha.Admin.WebApi.Controllers
 
 
         [HttpGet]
+        [AllowAnonymous]
         public dynamic GetUserInfo()
         {
             var user_id = User.Claims.Where(t => t.Type == "UId").Select(t => t.Value).FirstOrDefault();
@@ -302,21 +303,23 @@ namespace YiSha.Admin.WebApi.Controllers
             List<double> values = new List<double>();
 
 
-            for (int i = 0; i < user.Count; i++)
-            {
+            
                 var jine = from a in _context.cq_order
                            join b in _context.cq_user on a.user_id equals b.Id
-                           where b.f_id.Contains(user[i].Id.ToString()) && a.type == 2 && a.state == 1
+                           where b.f_id.Contains(user_id) && a.type == 2 && a.state == 1
 
                            select new
                            {
                                a.yuanjia
                            };
 
-                var licai = _context.cq_licai_order.Where(t => t.User_id == user[i].Id).Sum(t => t.money);
+ 
 
-                values.Add((double)jine.Sum(t => t.yuanjia) + double.Parse(licai.ToString()));
-            }
+
+        
+
+                values.Add((double)jine.Sum(t => t.yuanjia));
+ 
 
 
  
@@ -384,7 +387,7 @@ namespace YiSha.Admin.WebApi.Controllers
                     var jine = from a in _context.cq_order
                                join b in _context.cq_user on a.user_id equals b.Id
 
-                               where b.f_id.Contains(user[i].Id.ToString())
+                               where b.f_id.Contains(user[i].Id.ToString())&&a.type==2&&a.state==1
 
                                select new
                                {

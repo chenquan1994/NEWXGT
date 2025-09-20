@@ -241,8 +241,7 @@ namespace YiSha.Admin.WebApi.Controllers
 
                             _context.Add(licai);
                             _context.SaveChanges();
-
-                            dengji((long)zijiuser.zt_id);
+ 
 
 
                             break;
