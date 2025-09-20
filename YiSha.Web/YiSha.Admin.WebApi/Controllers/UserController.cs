@@ -44,6 +44,9 @@ namespace YiSha.Admin.WebApi.Controllers
         private readonly IConfiguration _configuration;
         private readonly MiaContext _context;
 
+        private object locker = new object();
+
+
         public UserController(IConfiguration configuration, MiaContext context)
         {
             _configuration = configuration;
@@ -129,79 +132,79 @@ namespace YiSha.Admin.WebApi.Controllers
         }
 
 
-        ////登录
+        //登录
 
-        //[HttpPost]
-        //[AllowAnonymous]
-        //public dynamic Userlogin(cqUserEntity cqUser)
-        //{
+        [HttpPost]
+        [AllowAnonymous]
+        public dynamic Userlogin(cqUserEntity cqUser)
+        {
 
-        //    string token = "";
-        //    var list = _context.cq_user.Where(t => t.dizhi == cqUser.dizhi).ToList();
-
-
-
-
-        //    //已创建用户
-        //    if (list.Count > 0)
-        //    {
-        //        var list2 = _context.cq_user.Where(t => t.dizhi == cqUser.dizhi).FirstOrDefault();
-        //        token = CreateToken(list2.Id.ToString(), cqUser.dizhi);
-        //    }
-        //    else
-        //    {
-        //        var f_user = _context.cq_user.Where(t => t.yqm == cqUser.yqm).FirstOrDefault();
-
-
-        //        if (f_user != null)
-        //        {
-        //            string yamcode = "";
-        //            Random random = new Random();
-        //            yamcode = random.Next(100000, 999999).ToString();
-        //            cqUserEntity user = new cqUserEntity();
-        //            user.Id = IdGeneratorHelper.Instance.GetId();
-        //            user.dizhi = cqUser.dizhi;
-        //            user.f_id = f_user.f_id + "," + f_user.Id;
-        //            user.zt_id = f_user.Id;
-        //            user.zhitui = 0;
-        //            user.datetitime = DateTime.Now;
-        //            user.yqm = yamcode;
-        //            user.jibie = 0;
-        //            user.yeji = 0;
-
-        //            _context.Add(user);
-        //            _context.SaveChanges();
-
-        //            MoneyEntity money = new MoneyEntity();
-        //            money.usdt = 0;
-        //            money.xgt = 0;
-        //            money.usdk = 0;
-        //            money.Id = IdGeneratorHelper.Instance.GetId();
-        //            money.User_id = user.Id;
-        //            f_user.zhitui += 1;
-
-        //            _context.Add(money);
-        //            _context.SaveChanges();
-
-        //            token = CreateToken(user.Id.ToString(), cqUser.dizhi);
-
-        //        }
-        //        else
-        //        {
-        //            return new { state = "error", msg = "邀请码错误" };
-        //        }
+            string token = "";
+            var list = _context.cq_user.Where(t => t.dizhi == cqUser.dizhi).ToList();
 
 
 
 
+            //已创建用户
+            if (list.Count > 0)
+            {
+                var list2 = _context.cq_user.Where(t => t.dizhi == cqUser.dizhi).FirstOrDefault();
+                token = CreateToken(list2.Id.ToString(), cqUser.dizhi);
+            }
+            else
+            {
+                var f_user = _context.cq_user.Where(t => t.yqm == cqUser.yqm).FirstOrDefault();
 
-        //    }
 
-        //    return new { state = "success", msg = "成功", token = token };
+                if (f_user != null)
+                {
+                    string yamcode = "";
+                    Random random = new Random();
+                    yamcode = random.Next(100000, 999999).ToString();
+                    cqUserEntity user = new cqUserEntity();
+                    user.Id = IdGeneratorHelper.Instance.GetId();
+                    user.dizhi = cqUser.dizhi;
+                    user.f_id = f_user.f_id + "," + f_user.Id;
+                    user.zt_id = f_user.Id;
+                    user.zhitui = 0;
+                    user.datetitime = DateTime.Now;
+                    user.yqm = yamcode;
+                    user.jibie = 0;
+                    user.yeji = 0;
+
+                    _context.Add(user);
+                    _context.SaveChanges();
+
+                    MoneyEntity money = new MoneyEntity();
+                    money.usdt = 0;
+                    money.xgt = 0;
+                    money.usdk = 0;
+                    money.Id = IdGeneratorHelper.Instance.GetId();
+                    money.User_id = user.Id;
+                    f_user.zhitui += 1;
+
+                    _context.Add(money);
+                    _context.SaveChanges();
+
+                    token = CreateToken(user.Id.ToString(), cqUser.dizhi);
+
+                }
+                else
+                {
+                    return new { state = "error", msg = "邀请码错误" };
+                }
 
 
 
-        //}
+
+
+            }
+
+            return new { state = "success", msg = "成功", token = token };
+
+
+
+        }
 
 
 
@@ -209,6 +212,7 @@ namespace YiSha.Admin.WebApi.Controllers
 
 
         [HttpGet]
+        [AllowAnonymous]
         public dynamic GetUserInfo()
         {
             var user_id = User.Claims.Where(t => t.Type == "UId").Select(t => t.Value).FirstOrDefault();
@@ -302,21 +306,23 @@ namespace YiSha.Admin.WebApi.Controllers
             List<double> values = new List<double>();
 
 
-            for (int i = 0; i < user.Count; i++)
-            {
+            
                 var jine = from a in _context.cq_order
                            join b in _context.cq_user on a.user_id equals b.Id
-                           where b.f_id.Contains(user[i].Id.ToString()) && a.type == 2 && a.state == 1
+                           where b.f_id.Contains(user_id) && a.type == 2 && a.state == 1
 
                            select new
                            {
                                a.yuanjia
                            };
 
-                var licai = _context.cq_licai_order.Where(t => t.User_id == user[i].Id).Sum(t => t.money);
+ 
 
-                values.Add((double)jine.Sum(t => t.yuanjia) + double.Parse(licai.ToString()));
-            }
+
+        
+
+                values.Add((double)jine.Sum(t => t.yuanjia));
+ 
 
 
  
@@ -384,7 +390,7 @@ namespace YiSha.Admin.WebApi.Controllers
                     var jine = from a in _context.cq_order
                                join b in _context.cq_user on a.user_id equals b.Id
 
-                               where b.f_id.Contains(user[i].Id.ToString())
+                               where b.f_id.Contains(user[i].Id.ToString())&&a.type==2&&a.state==1
 
                                select new
                                {
@@ -473,131 +479,135 @@ namespace YiSha.Admin.WebApi.Controllers
 
         public dynamic MomeyHz([FromForm] string money, [FromForm] int type, [FromForm] string uid)
         {
-            var user_id = User.Claims.Where(t => t.Type == "UId").Select(t => t.Value).FirstOrDefault();
-
-            var ziji_user = _context.cq_user.Where(t => t.Id == long.Parse(user_id)).FirstOrDefault();
-
-            if (ziji_user.hz_state == 1)
+            lock (locker)
             {
-                return new { msg = "转账失败,请联系管理员开通", state = "error" };
+                var user_id = User.Claims.Where(t => t.Type == "UId").Select(t => t.Value).FirstOrDefault();
 
-            }
+                var ziji_user = _context.cq_user.Where(t => t.Id == long.Parse(user_id)).FirstOrDefault();
 
-
-            var usermoney = _context.cq_money.Where(t => t.User_id == long.Parse(user_id)).FirstOrDefault();
-
-            var df_user = _context.cq_user.Where(t => t.dizhi == uid).FirstOrDefault();
-
-            if (df_user.Id.ToString() == user_id)
-            {
-                return new { msg = "不能向自己转账", state = "error" };
-
-            }
-
-
-            decimal qb = 0;
-
-            string paytitle = "";
-
-            if (df_user == null)
-            {
-                return new { msg = "账号错误", state = "error" };
-
-            }
-            else
-            {
-                switch (type)
+                if (ziji_user.hz_state == 1)
                 {
-                    case 1:
-                        qb = usermoney.usdt;
-                        paytitle = "USDT";
-                        break;
-
-                    case 2:
-                        qb = usermoney.usdk;
-                        paytitle = "USDK";
-
-                        break;
-
-                    case 3:
-                        qb = usermoney.xgt;
-                        paytitle = "XGT";
-
-                        break;
+                    return new { msg = "转账失败,请联系管理员开通", state = "error" };
 
                 }
 
 
-                if (qb < decimal.Parse(money))
+                var usermoney = _context.cq_money.Where(t => t.User_id == long.Parse(user_id)).FirstOrDefault();
+
+                var df_user = _context.cq_user.Where(t => t.dizhi == uid).FirstOrDefault();
+
+                if (df_user.Id.ToString() == user_id)
                 {
-                    return new { msg = "余额不足", state = "error" };
+                    return new { msg = "不能向自己转账", state = "error" };
 
                 }
 
 
-                //对方钱包
-                var dfmoney = _context.cq_money.Where(t => t.User_id == df_user.Id).FirstOrDefault();
+                decimal qb = 0;
 
+                string paytitle = "";
 
-                switch (type)
+                if (df_user == null)
                 {
-                    case 1:
-                        dfmoney.usdt += decimal.Parse(money);
-                        usermoney.usdt -= decimal.Parse(money);
-
-
-                        break;
-
-                    case 2:
-                        dfmoney.usdk += decimal.Parse(money);
-                        usermoney.usdk -= decimal.Parse(money);
-
-
-
-                        break;
-
-                    case 3:
-                        dfmoney.xgt += decimal.Parse(money);
-                        usermoney.xgt -= decimal.Parse(money);
-
-
-
-                        break;
+                    return new { msg = "账号错误", state = "error" };
 
                 }
+                else
+                {
+                    switch (type)
+                    {
+                        case 1:
+                            qb = usermoney.usdt;
+                            paytitle = "USDT";
+                            break;
 
-                MxEntity mx1 = new MxEntity();
-                mx1.money = decimal.Parse(money);
-                mx1.title = "转出";
-                mx1.pay_type = paytitle;
-                mx1.df_dizhi = uid;
-                mx1.type = 2;
-                mx1.user_id = long.Parse(user_id);
-                mx1.datetime = DateTime.Now;
-                mx1.Id = IdGeneratorHelper.Instance.GetId();
+                        case 2:
+                            qb = usermoney.usdk;
+                            paytitle = "USDK";
 
+                            break;
 
-                _context.Add(mx1);
+                        case 3:
+                            qb = usermoney.xgt;
+                            paytitle = "XGT";
 
+                            break;
 
-
-                MxEntity mx2 = new MxEntity();
-                mx2.money = decimal.Parse(money);
-                mx2.title = "转入";
-                mx2.df_dizhi = ziji_user.dizhi;
-                mx2.pay_type = paytitle;
-                mx2.type = 1;
-                mx2.user_id = df_user.Id;
-                mx2.datetime = DateTime.Now;
-                mx2.Id = IdGeneratorHelper.Instance.GetId();
+                    }
 
 
-                _context.Add(mx2);
+                    if (qb < decimal.Parse(money))
+                    {
+                        return new { msg = "余额不足", state = "error" };
 
-                _context.SaveChanges();
+                    }
 
 
-                return new { msg = "转账成功", state = "success" };
+                    //对方钱包
+                    var dfmoney = _context.cq_money.Where(t => t.User_id == df_user.Id).FirstOrDefault();
+
+
+                    switch (type)
+                    {
+                        case 1:
+                            dfmoney.usdt += decimal.Parse(money);
+                            usermoney.usdt -= decimal.Parse(money);
+
+
+                            break;
+
+                        case 2:
+                            dfmoney.usdk += decimal.Parse(money);
+                            usermoney.usdk -= decimal.Parse(money);
+
+
+
+                            break;
+
+                        case 3:
+                            dfmoney.xgt += decimal.Parse(money);
+                            usermoney.xgt -= decimal.Parse(money);
+
+
+
+                            break;
+
+                    }
+
+                    MxEntity mx1 = new MxEntity();
+                    mx1.money = decimal.Parse(money);
+                    mx1.title = "转出";
+                    mx1.pay_type = paytitle;
+                    mx1.df_dizhi = uid;
+                    mx1.type = 2;
+                    mx1.user_id = long.Parse(user_id);
+                    mx1.datetime = DateTime.Now;
+                    mx1.Id = IdGeneratorHelper.Instance.GetId();
+
+
+                    _context.Add(mx1);
+
+
+
+                    MxEntity mx2 = new MxEntity();
+                    mx2.money = decimal.Parse(money);
+                    mx2.title = "转入";
+                    mx2.df_dizhi = ziji_user.dizhi;
+                    mx2.pay_type = paytitle;
+                    mx2.type = 1;
+                    mx2.user_id = df_user.Id;
+                    mx2.datetime = DateTime.Now;
+                    mx2.Id = IdGeneratorHelper.Instance.GetId();
+
+
+                    _context.Add(mx2);
+
+                    _context.SaveChanges();
+
+
+                    return new { msg = "转账成功", state = "success" };
+                }
+            
 
 
 
@@ -633,72 +643,76 @@ namespace YiSha.Admin.WebApi.Controllers
         [HttpPost]
         public dynamic Addtx(TxEntity tx)
         {
-            var user_id = User.Claims.Where(t => t.Type == "UId").Select(t => t.Value).FirstOrDefault();
-            var usermoney = _context.cq_money.Where(t => t.User_id == long.Parse(user_id)).FirstOrDefault();
-            var xgt = _context.cq_xgt.OrderByDescending(t => t.datetime).FirstOrDefault();
-            double sxf = (double)tx.money * 0.1;
-
-            double xgtsxf = sxf / (double)xgt.money;
-
-
-            var userlist = _context.cq_user.Where(t => t.Id == long.Parse(user_id)).FirstOrDefault();
-
-            if (userlist.tx_state == 1)
+            lock (locker)
             {
-                return new { msg = "提现失败,请联系管理员开通", state = "error" };
+                var user_id = User.Claims.Where(t => t.Type == "UId").Select(t => t.Value).FirstOrDefault();
+                var usermoney = _context.cq_money.Where(t => t.User_id == long.Parse(user_id)).FirstOrDefault();
+                var xgt = _context.cq_xgt.OrderByDescending(t => t.datetime).FirstOrDefault();
+                double sxf = (double)tx.money * 0.1;
+
+                double xgtsxf = sxf / (double)xgt.money;
+
+
+                var userlist = _context.cq_user.Where(t => t.Id == long.Parse(user_id)).FirstOrDefault();
+
+                if (userlist.tx_state == 1)
+                {
+                    return new { msg = "提现失败,请联系管理员开通", state = "error" };
+                }
+
+
+                if (tx.money < 10)
+                {
+                    return new { msg = "最低10起提", state = "error" };
+                }
+
+
+                if (usermoney.xgt < (decimal)xgtsxf)
+                {
+                    return new { msg = "XGT不足", state = "error" };
+
+                }
+
+                if (usermoney.usdt < (decimal)tx.money)
+                {
+                    return new { msg = "USDT不足", state = "error" };
+
+                }
+
+
+                usermoney.usdt -= (decimal)tx.money;
+
+                usermoney.xgt -= (decimal)xgtsxf;
+                MxEntity mx = new MxEntity();
+
+                mx.money = tx.money;
+                mx.datetime = DateTime.Now;
+                mx.title = "提现";
+                mx.user_id = long.Parse(user_id);
+                mx.pay_type = "USDT";
+                //1收入，2支出
+                mx.type = 2;
+                mx.Id = IdGeneratorHelper.Instance.GetId();
+
+
+
+                _context.Add(mx);
+
+
+
+                tx.Id = IdGeneratorHelper.Instance.GetId();
+                tx.datetime = DateTime.Now;
+                tx.user_id = long.Parse(user_id);
+                tx.state = 0;
+
+
+                _context.Add(tx);
+                _context.SaveChanges();
+
+
+                return new { msg = "提现成功", state = "success" };
             }
-
-
-            if (tx.money < 10)
-            {
-                return new { msg = "最低10起提", state = "error" };
-            }
-
-
-            if (usermoney.xgt < (decimal)xgtsxf)
-            {
-                return new { msg = "XGT不足", state = "error" };
-
-            }
-
-            if (usermoney.usdt < (decimal)tx.money)
-            {
-                return new { msg = "USDT不足", state = "error" };
-
-            }
-
-
-            usermoney.usdt -= (decimal)tx.money;
-
-            usermoney.xgt -= (decimal)xgtsxf;
-            MxEntity mx = new MxEntity();
-
-            mx.money = tx.money;
-            mx.datetime = DateTime.Now;
-            mx.title = "提现";
-            mx.user_id = long.Parse(user_id);
-            mx.pay_type = "USDT";
-            //1收入，2支出
-            mx.type = 2;
-            mx.Id = IdGeneratorHelper.Instance.GetId();
-
-
-
-            _context.Add(mx);
-
-
-
-            tx.Id = IdGeneratorHelper.Instance.GetId();
-            tx.datetime = DateTime.Now;
-            tx.user_id = long.Parse(user_id);
-            tx.state = 0;
-
-
-            _context.Add(tx);
-            _context.SaveChanges();
-
-
-            return new { msg = "提现成功", state = "success" };
+               
 
 
 

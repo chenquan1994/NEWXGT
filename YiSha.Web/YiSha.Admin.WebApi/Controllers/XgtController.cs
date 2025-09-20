@@ -19,7 +19,7 @@ namespace YiSha.Admin.WebApi.Controllers
       
         private readonly IConfiguration _configuration;
         private readonly MiaContext _context;
-
+        private object locker = new object();
         public XgtController(IConfiguration configuration, MiaContext context)
         {
             _configuration = configuration;
@@ -49,35 +49,39 @@ namespace YiSha.Admin.WebApi.Controllers
         [HttpPost]
         public dynamic huazhuan(XgtEntity xgt)
         {
-            var user_id = User.Claims.Where(t => t.Type == "UId").Select(t => t.Value).FirstOrDefault();
-
-            var userlist = _context.cq_user.Where(t => t.Id == long.Parse(user_id)).FirstOrDefault();
-
-            if (userlist.dh_state == 1)
+            lock (locker)
             {
-                return new { msg = "兑换失败,系统入金,请联系管理员开通", state = "error" };
+                var user_id = User.Claims.Where(t => t.Type == "UId").Select(t => t.Value).FirstOrDefault();
+
+                var userlist = _context.cq_user.Where(t => t.Id == long.Parse(user_id)).FirstOrDefault();
+
+                if (userlist.dh_state == 1)
+                {
+                    return new { msg = "兑换失败,系统入金,请联系管理员开通", state = "error" };
+                }
+
+
+
+                var xgtmoney = _context.cq_xgt.OrderByDescending(t => t.datetime).FirstOrDefault();
+
+                decimal usdt = (decimal)xgt.money * (decimal)xgtmoney.money;
+
+                var money = _context.cq_money.Where(t => t.User_id == long.Parse(user_id)).FirstOrDefault();
+
+                if (money.xgt < (decimal)xgt.money)
+                {
+                    return new { msg = "兑换失败,余额不足", state = "error" };
+
+                }
+
+                money.usdt += usdt;
+                money.xgt -= (decimal)xgt.money;
+
+                _context.SaveChanges();
+
+                return new { msg = "兑换成功", state = "success" };
             }
-
-
-
-            var xgtmoney = _context.cq_xgt.OrderByDescending(t => t.datetime).FirstOrDefault();
-
-            decimal usdt = (decimal)xgt.money * (decimal)xgtmoney.money;
-
-            var money = _context.cq_money.Where(t => t.User_id == long.Parse(user_id)).FirstOrDefault();
-
-            if (money.xgt < (decimal)xgt.money)
-            {
-                return new { msg = "兑换失败,余额不足", state = "error" };
-
-            }
-
-            money.usdt += usdt;
-            money.xgt -= (decimal)xgt.money;
-
-            _context.SaveChanges();
-
-            return new { msg = "兑换成功", state = "success" };
+           
 
 
         }

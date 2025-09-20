@@ -23,7 +23,7 @@ namespace YiSha.Admin.WebApi.Controllers
     {
         private readonly IConfiguration _configuration;
         private readonly MiaContext _context;
-
+        private object locker = new object();
         public orderController(IConfiguration configuration, MiaContext context)
         {
             _configuration = configuration;
@@ -108,6 +108,7 @@ namespace YiSha.Admin.WebApi.Controllers
         {
 
             var orderlist = _context.cq_order.Where(t => t.Id == long.Parse(order.orderId) && t.money == decimal.Parse(order.amount) && t.state == 0).ToList();
+
             var orderlist2 = _context.cq_order.Where(t => t.Id == long.Parse(order.orderId) && t.money == decimal.Parse(order.amount) && t.state == 0).FirstOrDefault();
 
             var zijiuser = _context.cq_user.Where(t => t.Id == long.Parse(orderlist2.user_id.ToString())).FirstOrDefault();
@@ -161,101 +162,106 @@ namespace YiSha.Admin.WebApi.Controllers
 
                     orderinfo.state = 1;
 
-
-                    switch (orderinfo.type)
+                    //防止重复写入，重复生成订单 扣用户的钱
+                    if (orderinfo.state != 0)
                     {
-                        case 1:
-                            KuangListEntity k = new KuangListEntity();
-                            k.Id = IdGeneratorHelper.Instance.GetId();
-                            k.state = 1;
-                            k.datetime = DateTime.Now;
-                            k.sf_money = 0;
-                            k.sf_datetime = DateTime.Now;
-                            k.wsf_money = orderinfo.money * 4;
-                            k.user_id = orderinfo.user_id;
-                            k.title = "社区节点包";
-                            k.money = orderinfo.money;
-                            _context.Add(k);
-                            _context.SaveChanges();
-                            break;
+
+                        switch (orderinfo.type)
+                        {
+                            case 1:
+                                KuangListEntity k = new KuangListEntity();
+                                k.Id = IdGeneratorHelper.Instance.GetId();
+                                k.state = 1;
+                                k.datetime = DateTime.Now;
+                                k.sf_money = 0;
+                                k.sf_datetime = DateTime.Now;
+                                k.wsf_money = orderinfo.money * 4;
+                                k.user_id = orderinfo.user_id;
+                                k.title = "社区节点包";
+                                k.money = orderinfo.money;
+                                _context.Add(k);
+                                _context.SaveChanges();
+                                break;
 
 
-                        case 2:
-                            LicaiOrderEntity licai = new LicaiOrderEntity();
+                            case 2:
+                                LicaiOrderEntity licai = new LicaiOrderEntity();
 
-                            var usermoney = _context.cq_money.Where(t => t.User_id == long.Parse(orderlist2.user_id.ToString())).FirstOrDefault();
+                                var usermoney = _context.cq_money.Where(t => t.User_id == long.Parse(orderlist2.user_id.ToString())).FirstOrDefault();
 
-                            double koudiaousdk = (double)orderlist2.yuanjia * 0.3;
-                            double meishifangmoney = 0;
-                            if (orderinfo.yuanjia >= 100 && orderinfo.yuanjia <= 499)
-                            {
-                                meishifangmoney = (double)(orderinfo.yuanjia * 2);
-                            }
-
-
-                            else if (orderinfo.yuanjia >= 500 && orderinfo.yuanjia < 1000)
-                            {
-                                meishifangmoney = (double)(double.Parse(orderinfo.yuanjia.ToString()) * 2.5);
-                            }
+                                double koudiaousdk = (double)orderlist2.yuanjia * 0.3;
+                                double meishifangmoney = 0;
+                                if (orderinfo.yuanjia >= 100 && orderinfo.yuanjia <= 499)
+                                {
+                                    meishifangmoney = (double)(orderinfo.yuanjia * 2);
+                                }
 
 
-                            else if (orderinfo.yuanjia >= 1000 && orderinfo.yuanjia < 3000)
-                            {
-                                meishifangmoney = (double)(double.Parse(orderinfo.yuanjia.ToString()) * 3);
-                            }
-
-                            else if (orderinfo.yuanjia >= 3000 && orderinfo.yuanjia < 5000)
-                            {
-                                meishifangmoney = (double)(double.Parse(orderinfo.yuanjia.ToString()) * 3.5);
-                            }
+                                else if (orderinfo.yuanjia >= 500 && orderinfo.yuanjia < 1000)
+                                {
+                                    meishifangmoney = (double)(double.Parse(orderinfo.yuanjia.ToString()) * 2.5);
+                                }
 
 
-                            else
-                            {
-                                meishifangmoney = (double)(double.Parse(orderinfo.yuanjia.ToString()) * 4);
-                            }
-                            usermoney.usdk -= (decimal)koudiaousdk;
-                            licai.Id = IdGeneratorHelper.Instance.GetId();
-                            licai.state = 1;
-                            licai.datetime = DateTime.Now;
-                            licai.sf_money = 0;
-                            licai.wsf_money = (decimal?)meishifangmoney;
-                            licai.User_id = orderinfo.user_id;
-                            licai.sf_datetime = DateTime.Now;
-                            licai.money = orderinfo.yuanjia;
-                            shangji.yeji += orderinfo.yuanjia;
+                                else if (orderinfo.yuanjia >= 1000 && orderinfo.yuanjia < 3000)
+                                {
+                                    meishifangmoney = (double)(double.Parse(orderinfo.yuanjia.ToString()) * 3);
+                                }
+
+                                else if (orderinfo.yuanjia >= 3000 && orderinfo.yuanjia < 5000)
+                                {
+                                    meishifangmoney = (double)(double.Parse(orderinfo.yuanjia.ToString()) * 3.5);
+                                }
 
 
-
-
-                            MxEntity mx = new MxEntity();
-                            mx.Id = IdGeneratorHelper.Instance.GetId();
-                            mx.pay_type = "USDK";
-                            mx.type = 2;
-                            mx.title = "投资理财消耗"+koudiaousdk;
-                            mx.user_id = orderinfo.user_id;
-                            mx.datetime = DateTime.Now;
-                            _context.Add(mx);
-                            _context.SaveChanges();
-
-
-                            _context.Add(licai);
-                            _context.SaveChanges();
-
-                            dengji((long)zijiuser.zt_id);
-
-
-                            break;
+                                else
+                                {
+                                    meishifangmoney = (double)(double.Parse(orderinfo.yuanjia.ToString()) * 4);
+                                }
+                                usermoney.usdk -= (decimal)koudiaousdk;
+                                licai.Id = IdGeneratorHelper.Instance.GetId();
+                                licai.state = 1;
+                                licai.datetime = DateTime.Now;
+                                licai.sf_money = 0;
+                                licai.wsf_money = (decimal?)meishifangmoney;
+                                licai.User_id = orderinfo.user_id;
+                                licai.sf_datetime = DateTime.Now;
+                                licai.money = orderinfo.yuanjia;
+                                shangji.yeji += orderinfo.yuanjia;
 
 
 
 
+                                MxEntity mx = new MxEntity();
+                                mx.Id = IdGeneratorHelper.Instance.GetId();
+                                mx.pay_type = "USDK";
+                                mx.type = 2;
+                                mx.title = "投资理财消耗" + koudiaousdk;
+                                mx.user_id = orderinfo.user_id;
+                                mx.datetime = DateTime.Now;
+                                _context.Add(mx);
+                                _context.SaveChanges();
+
+
+                                _context.Add(licai);
+                                _context.SaveChanges();
+
+
+
+                                break;
+
+
+
+
+                        }
+
+
+
+                        _context.SaveChanges();
+                        return "成功";
                     }
 
-                 
 
-                    _context.SaveChanges();
-                    return "成功";
 
                 }
                 else
@@ -390,181 +396,186 @@ namespace YiSha.Admin.WebApi.Controllers
 
         public async Task<dynamic> Addlicaiorder(OrderEntity order)
         {
+           
+                var user_id = User.Claims.Where(t => t.Type == "UId").Select(t => t.Value).FirstOrDefault();
 
-            var user_id = User.Claims.Where(t => t.Type == "UId").Select(t => t.Value).FirstOrDefault();
-
-            var user=_context.cq_user.Where(t=>t.Id==long.Parse(user_id)).FirstOrDefault();
-            var url = "https://qqq.usxgt.com/api/v1/balance/usdt/" + user.dizhi + "";
-
-
-            var client = new HttpClient();
-
-            decimal money = (decimal)order.money;
-
-            order.yuanjia = order.money;
-            double dazhe = (double)order.money * 0.3;
-            double shiji = (double)order.money - dazhe;
-
-            client.DefaultRequestHeaders.Add("x-api-key", "your_api_key_1_here");
-            var response = await client.GetAsync(url);
+                var user = _context.cq_user.Where(t => t.Id == long.Parse(user_id)).FirstOrDefault();
+                var url = "https://qqq.usxgt.com/api/v1/balance/usdt/" + user.dizhi + "";
 
 
-            string body = await response.Content.ReadAsStringAsync();
+                var client = new HttpClient();
 
-            var peron = JsonConvert.DeserializeObject<yue>(body);
+                decimal money = (decimal)order.money;
 
-            if (peron.success == "true")
-            {
-                if (peron.balance < (decimal)shiji)
+                order.yuanjia = order.money;
+                double dazhe = (double)order.money * 0.3;
+                double shiji = (double)order.money - dazhe;
+
+                client.DefaultRequestHeaders.Add("x-api-key", "your_api_key_1_here");
+                var response = await client.GetAsync(url);
+
+
+                string body = await response.Content.ReadAsStringAsync();
+
+                var peron = JsonConvert.DeserializeObject<yue>(body);
+
+                if (peron.success == "true")
                 {
-                    return new { msg = "USDT余额不足", state = "error" };
+                    if (peron.balance < (decimal)shiji)
+                    {
+                        return new { msg = "USDT余额不足", state = "error" };
 
+                    }
+                    else
+                    {
+
+
+                        double usdk = (double)money * 0.3;
+                        var usermoney = _context.cq_money.Where(t => t.User_id == long.Parse(user_id)).FirstOrDefault();
+
+                        if (usermoney.usdk < (decimal)usdk)
+                        {
+                            return new { msg = "USDK余额不足", state = "error" };
+                        }
+
+
+
+
+
+                        order.money = decimal.Parse(shiji.ToString());
+                        order.state = 0;
+                        order.type = 2;
+                        order.Id = IdGeneratorHelper.Instance.GetId();
+                        order.user_id = long.Parse(user_id);
+                        order.sf_state = 0;
+                        order.datetime = System.DateTime.Now;
+                        _context.Add(order);
+                        _context.SaveChanges();
+                        string ddid = order.Id.ToString();
+                        return new { msg = "订单创建成功", order = order.Id.ToString(), dazhemoney = shiji, state = "success" };
+                    }
                 }
+
                 else
                 {
-                 
+                    return new { msg = "系统错误", state = "error" };
 
-                    double usdk = (double)money * 0.3;
-                    var usermoney = _context.cq_money.Where(t => t.User_id == long.Parse(user_id)).FirstOrDefault();
-
-                    if (usermoney.usdk < (decimal)usdk)
-                    {
-                        return new { msg = "USDK余额不足", state = "error" };
-                    }
-
-
-           
-
-                  
-                    order.money = decimal.Parse(shiji.ToString());
-                    order.state = 0;
-                    order.type = 2;
-                    order.Id = IdGeneratorHelper.Instance.GetId();
-                    order.user_id = long.Parse(user_id);
-                    order.sf_state = 0;
-                    order.datetime = System.DateTime.Now;
-                     _context.Add(order);
-                    _context.SaveChanges();
-                    string ddid = order.Id.ToString();
-                    return new { msg = "订单创建成功", order = order.Id.ToString(), dazhemoney = shiji, state = "success" };
                 }
-            }
-
-            else
-            {
-                return new { msg = "系统错误", state = "error" };
-
-            }
+          
+          
 
         }
 
         [HttpPost]
         public dynamic Addzhiya(ZhiyaOrderEntity order)
         {
-
-            var user_id = User.Claims.Where(t => t.Type == "UId").Select(t => t.Value).FirstOrDefault();
-
-            var userlist = _context.cq_user.Where(t => t.Id == long.Parse(user_id)).FirstOrDefault();
-
-            if (userlist.zy_state == 1)
+            lock (locker)
             {
-                return new { msg = "质押失败,请联系管理员开通", state = "error" };
-            }
+                var user_id = User.Claims.Where(t => t.Type == "UId").Select(t => t.Value).FirstOrDefault();
 
-            if (order.day == 7)
-            {
-                var zhiya = _context.cq_zhiya_order.Where(t => t.user_id == long.Parse(user_id) && t.day == 7).ToList();
-                if (zhiya.Count > 0)
+                var userlist = _context.cq_user.Where(t => t.Id == long.Parse(user_id)).FirstOrDefault();
+
+                if (userlist.zy_state == 1)
                 {
-                    return new { msg = "质押失败,已体验过7天", state = "error" };
-                }
-            }
-
-
-            if (order.day == 15)
-            {
-                var zhiya2 = _context.cq_zhiya_order.Where(t => t.user_id == long.Parse(user_id) && t.day == 15).ToList();
-                if (zhiya2.Count > 0)
-                {
-                    return new { msg = "质押失败,已体验过15天", state = "error" };
+                    return new { msg = "质押失败,请联系管理员开通", state = "error" };
                 }
 
+                if (order.day == 7)
+                {
+                    var zhiya = _context.cq_zhiya_order.Where(t => t.user_id == long.Parse(user_id) && t.day == 7).ToList();
+                    if (zhiya.Count > 0)
+                    {
+                        return new { msg = "质押失败,已体验过7天", state = "error" };
+                    }
+                }
+
+
+                if (order.day == 15)
+                {
+                    var zhiya2 = _context.cq_zhiya_order.Where(t => t.user_id == long.Parse(user_id) && t.day == 15).ToList();
+                    if (zhiya2.Count > 0)
+                    {
+                        return new { msg = "质押失败,已体验过15天", state = "error" };
+                    }
+
+                }
+
+
+
+                decimal money = (decimal)order.money;
+
+
+
+                var usermoney = _context.cq_money.Where(t => t.User_id == long.Parse(user_id)).FirstOrDefault();
+
+                if (usermoney.usdt < (decimal)money)
+                {
+                    return new { msg = "USdt余额不足", state = "error" };
+                }
+
+                double beilv = 0;
+                switch (int.Parse(order.day.ToString()))
+                {
+                    case 7:
+                        beilv = 0.01;
+                        break;
+                    case 15:
+                        beilv = 0.011;
+                        break;
+                    case 30:
+                        beilv = 0.013;
+                        break;
+                    case 90:
+                        beilv = 0.015;
+                        break;
+                    case 180:
+                        beilv = 0.018;
+                        break;
+                    case 360:
+                        beilv = 0.02;
+                        break;
+
+
+                }
+
+
+                //释放金额
+                double shifang = double.Parse(order.money.ToString()) * beilv * int.Parse(order.day.ToString());
+
+
+                order.state = 1;
+                order.Id = IdGeneratorHelper.Instance.GetId();
+                order.user_id = long.Parse(user_id);
+
+                order.sf_datetime = DateTime.Now;
+                order.sf_money = 0;
+                order.wsf_money = (decimal)shifang;
+                order.datetime = System.DateTime.Now;
+                usermoney.usdt -= (decimal)money;
+                _context.Add(order);
+                _context.SaveChanges();
+                string ddid = order.Id.ToString();
+
+
+                MxEntity mx = new MxEntity();
+                mx.Id = IdGeneratorHelper.Instance.GetId();
+                mx.pay_type = "USDT";
+                mx.type = 2;
+                mx.title = "质押" + order.money;
+                mx.user_id = long.Parse(user_id);
+                mx.datetime = DateTime.Now;
+                _context.Add(mx);
+                _context.SaveChanges();
+
+                return new
+                {
+                    msg = "订单创建成功",
+                    order = order.Id.ToString()
+
+
+                };
+
             }
-
-          
-
-            decimal money = (decimal)order.money;
-
-
-
-            var usermoney = _context.cq_money.Where(t => t.User_id == long.Parse(user_id)).FirstOrDefault();
-
-            if (usermoney.usdt < (decimal)money)
-            {
-                return new { msg = "USdt余额不足", state = "error" };
-            }
-
-            double beilv = 0;
-            switch (int.Parse(order.day.ToString()))
-            {
-                case 7:
-                    beilv = 0.01;
-                    break;
-                case 15:
-                    beilv = 0.011;
-                    break;
-                case 30:
-                    beilv = 0.013;
-                    break;
-                case 90:
-                    beilv = 0.015;
-                    break;
-                case 180:
-                    beilv = 0.018;
-                    break;
-                case 360:
-                    beilv = 0.02;
-                    break;
-
-
-            }
-
-
-            //释放金额
-            double shifang = double.Parse(order.money.ToString()) * beilv * int.Parse(order.day.ToString());
-
-
-            order.state = 1;
-            order.Id = IdGeneratorHelper.Instance.GetId();
-            order.user_id = long.Parse(user_id);
-
-            order.sf_datetime = DateTime.Now;
-            order.sf_money = 0;
-            order.wsf_money = (decimal)shifang;
-            order.datetime = System.DateTime.Now;
-            usermoney.usdt -= (decimal)money;
-            _context.Add(order);
-            _context.SaveChanges();
-            string ddid = order.Id.ToString();
-
-
-            MxEntity mx = new MxEntity();
-            mx.Id = IdGeneratorHelper.Instance.GetId();
-            mx.pay_type = "USDT";
-            mx.type = 2;
-            mx.title = "质押" + order.money;
-            mx.user_id = long.Parse(user_id);
-            mx.datetime = DateTime.Now;
-            _context.Add(mx);
-            _context.SaveChanges();
-
-            return new
-            {
-                msg = "订单创建成功",
-                order = order.Id.ToString()
-
-
-            };
 
         }
 
