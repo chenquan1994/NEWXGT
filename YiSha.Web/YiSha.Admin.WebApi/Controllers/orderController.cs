@@ -260,6 +260,11 @@ namespace YiSha.Admin.WebApi.Controllers
                         _context.SaveChanges();
                         return "成功";
                     }
+                    else
+                    {
+                        return "交易失败";
+
+                    }
 
 
 
